@@ -101,11 +101,59 @@ class CscopeVisiter(sublime_plugin.TextCommand):
                 CscopeCommand.add_to_history( getEncodedPosition(filepath, lineno) )
                 sublime.active_window().open_file(filepath + ":" + lineno, sublime.ENCODED_POSITION)
 
+class CscopeSublimeBuilder(threading.Thread):
+    def __init__(self, projectroot):
+        self.projectroot = projectroot
+        super(CscopeSublimeBuilder, self).__init__()
+
+    def makeDatabase(self):
+        print 'cscope -b -R'
+        cscope_arg_list = ['cscope', '-b', '-R']
+        popen_arg_list = {
+            "shell": False,
+            "stdout": subprocess.PIPE,
+            "stderr": subprocess.PIPE,
+            "cwd": self.projectroot
+        }
+
+        popen_arg_list["creationflags"] = 0x08000000
+
+
+        proc = subprocess.Popen(cscope_arg_list, **popen_arg_list)
+        output, erroroutput = proc.communicate()
+        print output
+        print erroroutput
+
+class CscopeBuildDatabaseCommand(sublime_plugin.TextCommand):
+    projectroot = None
+    def findRootDir(self):
+        cdir = os.path.dirname(self.view.file_name())
+        while cdir != os.path.dirname(cdir):
+            print cdir
+            print os.path.dirname(cdir)
+            # Search for the extension .sublime-project in all Directorys above the current
+            if ".sublime-project" in [extension[-16:] for extension in os.listdir(cdir)]:
+                self.projectroot = cdir
+                print "Database found: ", self.projectroot
+                break
+            cdir = os.path.dirname(cdir)
+
+    def run(self, edit):
+        print "Build Cscope Database"
+        self.findRootDir()
+        if self.projectroot == None:
+            sublime.error_message("Could not find rootdirictory for creating Cscope Database")
+            return
+
+        worker = CscopeSublimeBuilder(self.projectroot)
+        worker.makeDatabase()
+
 class GobackCommand(sublime_plugin.TextCommand):
     def __init__(self, view):
         self.view = view
 
     def run(self, edit):
+        print "Build Cscope back"
         if not CscopeCommand.is_history_empty():
             file_name = CscopeCommand.pop_latest_from_history()
             while file_name == getCurrentPosition(self.view):

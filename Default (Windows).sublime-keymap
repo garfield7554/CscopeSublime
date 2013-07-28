@@ -9,6 +9,11 @@
     	}
     },
     {
+      // Build Database
+      "keys": ["ß", "b"],
+      "command": "cscope_build_database"
+    },
+    {
         // Lookup symbol
         "keys": ["ctrl+l", "ctrl+s"],
         "command": "cscope",
